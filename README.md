@@ -1,5 +1,3 @@
----
-
 ## 🎯 phoswitch 是什么？
 
 **phoswitch** 是一款 Android 原生的极简照片整理工具。
