@@ -1,15 +1,3 @@
-<img src="logo.png" width="150" alt="phoswitch" align="center" />
-
-# PHOSWITCH
-
-[![License](https://img.shields.io/badge/License-phoswitch%20Source%20License-blue.svg)](LICENSE)
-![Platform](https://img.shields.io/badge/Platform-Android-green.svg)
-![Status](https://img.shields.io/badge/Status-Beta-blue.svg)
-
-[English](README_EN.md) | [中文](README.md)
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/I2I01XARUK)
-
 ---
 
 ## 🎯 phoswitch 是什么？
