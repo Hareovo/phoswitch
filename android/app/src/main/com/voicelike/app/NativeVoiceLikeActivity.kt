@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
@@ -85,6 +86,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.foundation.gestures.Orientation
@@ -794,16 +797,29 @@ sealed class UndoAction {
 class NativeVoiceLikeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
+        // Crash logging: persist stack trace locally, surface it on next launch
+        CrashReporter.install(applicationContext)
+        val lastCrash = CrashReporter.readLastCrash(this)
+        if (lastCrash != null) {
+            // Read now and clear, so the dialog shows it exactly once
+            CrashReporter.clear(this)
+            setContent {
+                MaterialTheme {
+                    CrashReportDialog(lastCrash)
+                }
+            }
+            return
+        }
+
         // Enable High Refresh Rate
         enableHighRefreshRate()
-        
+
         supportActionBar?.hide()
         setContent {
             VoiceLikeApp()
         }
     }
-
     private fun enableHighRefreshRate() {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -4745,4 +4761,43 @@ fun CelebrationConfetti(intensity: Int = 100) {
             }
         }
     })
+}
+
+@Composable
+fun CrashReportDialog(crashLog: String) {
+    val clipboard = LocalClipboardManager.current
+    val ctx = LocalContext.current
+
+    AlertDialog(
+        onDismissRequest = { },
+        title = { Text("App crashed last time", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = crashLog,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                clipboard.setText(AnnotatedString(crashLog))
+                Toast.makeText(ctx, "Copied", Toast.LENGTH_SHORT).show()
+            }) {
+                Text("Copy & Restart")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                (ctx as? Activity)?.recreate()
+            }) {
+                Text("Restart")
+            }
+        }
+    )
 }
