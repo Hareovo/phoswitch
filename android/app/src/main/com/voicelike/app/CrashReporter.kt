@@ -6,8 +6,11 @@ import java.io.PrintWriter
 import java.io.StringWriter
 
 /**
- * Minimal crash logger: saves uncaught exception stack traces to a local file
- * so the user can share it on the next launch (no internet permission needed).
+ * Minimal crash logger: saves uncaught exception stack traces to local files
+ * so the user can share them on the next launch (no internet permission needed).
+ *
+ * Installed from PhoswitchApp.attachBaseContext (earliest app code) so even
+ * Activity class-loading crashes get captured.
  */
 object CrashReporter {
 
@@ -26,7 +29,13 @@ object CrashReporter {
                     appendLine()
                     append(sw.toString())
                 }
-                File(context.filesDir, FILE_NAME).writeText(text)
+                // Primary: app-private files dir (always writable)
+                runCatching { File(context.filesDir, FILE_NAME).writeText(text) }
+                // Backup: external files dir (survives uninstall-on-reinstall data wipe? no, but readable via file manager on some devices)
+                runCatching {
+                    val ext = context.getExternalFilesDir(null)
+                    if (ext != null) File(ext, FILE_NAME).writeText(text)
+                }
             } catch (_: Throwable) {
                 // Never throw from the handler
             }
@@ -36,14 +45,24 @@ object CrashReporter {
 
     /** Returns the saved crash log, if any. */
     fun readLastCrash(context: Context): String? {
-        val f = File(context.filesDir, FILE_NAME)
-        return if (f.exists() && f.length() > 0) {
-            runCatching { f.readText() }.getOrNull()
-        } else null
-
+        // Prefer private dir, fall back to external backup
+        val primary = File(context.filesDir, FILE_NAME)
+        if (primary.exists() && primary.length() > 0) {
+            return runCatching { primary.readText() }.getOrNull()
+        }
+        val ext = context.getExternalFilesDir(null)
+        if (ext != null) {
+            val backup = File(ext, FILE_NAME)
+            if (backup.exists() && backup.length() > 0) {
+                return runCatching { backup.readText() }.getOrNull()
+            }
+        }
+        return null
     }
 
     fun clear(context: Context) {
         runCatching { File(context.filesDir, FILE_NAME).delete() }
+        val ext = context.getExternalFilesDir(null)
+        if (ext != null) runCatching { File(ext, FILE_NAME).delete() }
     }
 }
